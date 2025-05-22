@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EducaMate</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f7fa;
+    }
+    header {
+      background-color: #58cc02;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    #login, #main, #ia-container {
+      max-width: 600px;
+      margin: auto;
+      margin-top: 2rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    input, button, select {
+      padding: 0.6rem;
+      margin-top: 0.5rem;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      width: 100%;
+      font-size: 1rem;
+    }
+    .menu button {
+      width: 48%;
+      margin: 0.5%;
+      background-color: #58cc02;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .menu button:hover {
+      background-color: #4aa402;
+    }
+    .hidden {
+      display: none;
+    }
+    #score {
+      font-weight: bold;
+      color: #2c3e50;
+      margin-top: 1rem;
+    }
+    #chat {
+      max-height: 200px;
+      overflow-y: auto;
+      background: #f0f0f0;
+      padding: 0.5rem;
+      margin-top: 1rem;
+      border-radius: 8px;
+    }
+    .user { color: #3498db; font-weight: bold; }
+    .bot  { color: #27ae60; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <header>🎓 EducaMate - Aprendizaje interactivo</header>
+
+  <!-- Login -->
+  <div id="login">
+    <h2>Iniciar sesión</h2>
+    <input id="username" type="text" placeholder="Nombre de usuario" />
+    <input id="password" type="password" placeholder="Contraseña" />
+    <button onclick="login()">Ingresar</button>
+    <button onclick="register()">Crear cuenta</button>
+  </div>
+
+  <!-- Menú Principal -->
+  <div id="main" class="hidden">
+    <h2 id="welcome"></h2>
+    <div class="menu">
+      <button onclick="setMode('suma')">➕ Suma</button>
+      <button onclick="setMode('resta')">➖ Resta</button>
+      <button onclick="setMode('multi')">✖️ Multiplicación</button>
+      <button onclick="setMode('divi')">➗ División</button>
+    </div>
+
+    <div id="exerciseArea" class="hidden">
+      <label>Dificultad: <span id="dificultadValor">5</span></label>
+      <input type="range" id="dificultad" min="1" max="10" value="5" oninput="document.getElementById('dificultadValor').textContent = this.value" />
+      
+      <h3 id="exerciseText"></h3>
+      <input id="answerInput" type="number" placeholder="Escribe tu respuesta" />
+      <button onclick="checkAnswer()">Comprobar</button>
+      <div id="score">Puntos: 0</div>
+    </div>
+
+    <hr>
+    <div id="ia-container">
+      <h3>¿Dudas? Pregunta a la IA</h3>
+      <input id="iaInput" type="text" placeholder="¿Cómo se hace una división larga?" />
+      <button onclick="askIA()">Preguntar a la IA</button>
+      <div id="chat"></div>
+    </div>
+  </div>
+
+  <script>
+    let user = "";
+    let currentMode = "";
+    let correctAnswer = 0;
+    let score = 0;
+    const OPENAI_API_KEY = "TU_API_KEY_AQUI"; // ← Reemplaza con tu clave
+
+    function register() {
+      const u = document.getElementById("username").value;
+      const p = document.getElementById("password").value;
+      if (u && p) {
+        localStorage.setItem("user_" + u, p);
+        alert("Cuenta creada correctamente.");
+      } else {
+        alert("Ingresa un nombre de usuario y una contraseña.");
+      }
+    }
+
+    function login() {
+      const u = document.getElementById("username").value;
+      const p = document.getElementById("password").value;
+      const savedPassword = localStorage.getItem("user_" + u);
+
+      if (savedPassword && savedPassword === p) {
+        user = u;
+        document.getElementById("login").classList.add("hidden");
+        document.getElementById("main").classList.remove("hidden");
+        document.getElementById("welcome").textContent = `Hola, ${user}! Escoge una operación`;
+        score = parseInt(localStorage.getItem("score_" + user)) || 0;
+        document.getElementById("score").textContent = `Puntos: ${score}`;
+      } else {
+        alert("Usuario o contraseña incorrectos.");
+      }
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById("exerciseArea").classList.remove("hidden");
+      generarEjercicio();
+    }
+
+    function generarEjercicio() {
+      const dificultad = parseInt(document.getElementById("dificultad").value);
+      let a = Math.floor(Math.random() * dificultad * 10 + 1);
+      let b = Math.floor(Math.random() * dificultad * 10 + 1);
+      let texto = "";
+
+      switch (currentMode) {
+        case "suma":
+          correctAnswer = a + b;
+          texto = `${a} + ${b} = ?`;
+          break;
+        case "resta":
+          correctAnswer = a - b;
+          texto = `${a} - ${b} = ?`;
+          break;
+        case "multi":
+          correctAnswer = a * b;
+          texto = `${a} × ${b} = ?`;
+          break;
+        case "divi":
+          correctAnswer = (a * b) / b;
+          texto = `${a * b} ÷ ${b} = ?`;
+          break;
+      }
+
+      document.getElementById("exerciseText").textContent = texto;
+      document.getElementById("answerInput").value = "";
+    }
+
+    function checkAnswer() {
+      const userAnswer = parseFloat(document.getElementById("answerInput").value);
+      if (userAnswer === correctAnswer) {
+        score += 10;
+        alert("✅ ¡Correcto!");
+      } else {
+        alert("❌ Incorrecto. Intenta de nuevo.");
+      }
+      localStorage.setItem("score_" + user, score);
+      document.getElementById("score").textContent = `Puntos: ${score}`;
+      generarEjercicio();
+    }
+
+    async function askIA() {
+      const msg = document.getElementById("iaInput").value;
+      if (!msg) return;
+      const chat = document.getElementById("chat");
+
+      const userDiv = document.createElement("div");
+      userDiv.className = "user";
+      userDiv.textContent = "Tú: " + msg;
+      chat.appendChild(userDiv);
+
+      const resDiv = document.createElement("div");
+      resDiv.className = "bot";
+      resDiv.textContent = "IA: pensando...";
+      chat.appendChild(resDiv);
+      chat.scrollTop = chat.scrollHeight;
+
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: msg }],
+            max_tokens: 150,
+          }),
+        });
+        const data = await res.json();
+        if (data.choices && data.choices.length > 0) {
+          resDiv.textContent = "IA: " + data.choices[0].message.content.trim();
+        } else {
+          resDiv.textContent = "IA: No pude responder.";
+        }
+      } catch (e) {
+        resDiv.textContent = "IA: Error al conectar.";
+        console.error(e);
+      }
+    }
+  </script>
+</body>
+</html>
